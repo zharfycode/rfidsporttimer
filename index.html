@@ -1,33 +1,14 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>RFID Sport Data - Super Upgrade</title>
+  <title>RFID Sport Data - Live Results</title>
   <style>
     body { font-family: sans-serif; padding: 20px; }
     table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    th, td { border: 1px solid #aaa; padding: 8px; text-align: left; }
+    th, td { border: 1px solid #aaa; padding: 8px; text-align: center; }
     th { background-color: #f2f2f2; }
-    tr.highlight { background-color: #d4edda; animation: highlightAnim 2s ease; }
-    @keyframes highlightAnim {
-      from { background-color: yellow; }
-      to { background-color: #d4edda; }
-    }
-    input, button {
-      margin: 10px 5px;
-      padding: 8px 12px;
-      font-weight: bold;
-    }
-    .header {
-      text-align: center;
-      font-size: 24px;
-      font-weight: bold;
-      margin-bottom: 5px;
-    }
-    @media (max-width: 600px) {
-      table, thead, tbody, th, td, tr { display: block; }
-      th { display: none; }
-      td { border: none; border-bottom: 1px solid #eee; }
-    }
+    input, button { margin: 10px 5px; padding: 8px 12px; font-weight: bold; }
+    .header { text-align: center; font-size: 24px; font-weight: bold; margin-bottom: 5px; }
   </style>
 </head>
 <body>
@@ -37,13 +18,16 @@
 
 <input type="text" id="searchInput" placeholder="Cari Nama..." oninput="searchTable()">
 <button onclick="exportToCSV()">💾 Save CSV</button>
-<button onclick="window.print()">🖨 Print PDF</button>
+<button onclick="window.print()">🖨️ Print PDF</button>
 
 <table id="dataTable">
   <thead>
     <tr>
-      <th onclick="sortTable()">Nama 🔽</th>
-      <th>Masa</th>
+      <th>Position</th>
+      <th>Race No.</th>
+      <th>Name</th>
+      <th>Time</th>
+      <th>Gap</th>
     </tr>
   </thead>
   <tbody></tbody>
@@ -58,15 +42,11 @@
     apiKey: "AIzaSyA9mrY_tjAKoCkj_6P7CSNU_89oiGmF6GE",
     authDomain: "rfid-sport.firebaseapp.com",
     databaseURL: "https://rfid-sport-default-rtdb.firebaseio.com",
-    projectId: "rfid-sport",
-    storageBucket: "rfid-sport.firebasestorage.app",
-    messagingSenderId: "381783930543",
-    appId: "1:381783930543:web:3dd45b470f9661b888065a"
+    projectId: "rfid-sport"
   };
 
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
-  let previousData = [];
 
   function loadData() {
     const timeRef = db.ref("logs/time");
@@ -75,16 +55,27 @@
     Promise.all([timeRef.once('value'), userRef.once('value')]).then(([timeSnap, userSnap]) => {
       const timeData = Object.values(timeSnap.val() || {});
       const userData = Object.values(userSnap.val() || {});
-      const combinedData = [];
+      let combinedData = [];
 
       const minLength = Math.min(timeData.length, userData.length);
-
       for (let i = 0; i < minLength; i++) {
         combinedData.push({
-          nama: userData[i],
-          masa: timeData[i]
+          raceNo: "B" + String(i+1).padStart(3, '0'),  // Example Race No.
+          name: userData[i],
+          time: timeData[i]
         });
       }
+
+      combinedData.sort((a, b) => convertToMs(a.time) - convertToMs(b.time));
+      const leaderTime = convertToMs(combinedData[0].time);
+
+      combinedData = combinedData.map((item, index) => ({
+        position: index + 1,
+        raceNo: item.raceNo,
+        name: item.name,
+        time: item.time,
+        gap: index === 0 ? "+00:00" : formatGap(convertToMs(item.time) - leaderTime)
+      }));
 
       renderTable(combinedData);
     });
@@ -93,66 +84,53 @@
   function renderTable(data) {
     const tbody = document.querySelector("#dataTable tbody");
     tbody.innerHTML = "";
-
-    data.forEach((item, index) => {
+    data.forEach(item => {
       const tr = document.createElement("tr");
-
-      if (!previousData[index] || previousData[index].nama !== item.nama || previousData[index].masa !== item.masa) {
-        tr.classList.add("highlight");
-      }
-
-      const tdNama = document.createElement("td");
-      tdNama.textContent = item.nama;
-
-      const tdMasa = document.createElement("td");
-      tdMasa.textContent = item.masa;
-
-      tr.appendChild(tdNama);
-      tr.appendChild(tdMasa);
+      tr.innerHTML = `
+        <td>${item.position}</td>
+        <td>${item.raceNo}</td>
+        <td>${item.name}</td>
+        <td>${item.time}</td>
+        <td>${item.gap}</td>
+      `;
       tbody.appendChild(tr);
     });
+  }
 
-    previousData = data;
+  function convertToMs(timeStr) {
+    let [min, sec, ms] = timeStr.split(":").map(Number);
+    return (min * 60000) + (sec * 1000) + ms;
+  }
+
+  function formatGap(ms) {
+    let totalSec = Math.floor(ms / 1000);
+    let min = Math.floor(totalSec / 60);
+    let sec = totalSec % 60;
+    let msPart = ms % 1000;
+    return `+${String(min).padStart(2,'0')}:${String(sec).padStart(2,'0')}:${String(Math.floor(msPart/10)).padStart(2,'0')}`;
   }
 
   function exportToCSV() {
     const rows = Array.from(document.querySelectorAll("#dataTable tr"));
     let csvContent = "data:text/csv;charset=utf-8,";
-
     rows.forEach(row => {
       const cols = row.querySelectorAll("td, th");
-      const rowData = Array.from(cols).map(col => "${col.textContent.trim()}").join(",");
+      const rowData = Array.from(cols).map(col => `"${col.textContent.trim()}"`).join(",");
       csvContent += rowData + "\r\n";
     });
-
-    const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "rfid_sport_data.csv");
-    document.body.appendChild(link);
+    link.href = encodeURI(csvContent);
+    link.download = "rfid_race_results.csv";
     link.click();
-    document.body.removeChild(link);
   }
 
   function searchTable() {
     const input = document.getElementById("searchInput").value.toLowerCase();
     const trs = document.querySelectorAll("#dataTable tbody tr");
-
     trs.forEach(tr => {
-      const nama = tr.querySelector("td")?.textContent.toLowerCase();
-      tr.style.display = nama.includes(input) ? "" : "none";
+      const name = tr.cells[2].textContent.toLowerCase();
+      tr.style.display = name.includes(input) ? "" : "none";
     });
-  }
-
-  function sortTable() {
-    const tbody = document.querySelector("#dataTable tbody");
-    const rows = Array.from(tbody.rows);
-    const sorted = rows.sort((a, b) => {
-      const nameA = a.cells[0].textContent.toLowerCase();
-      const nameB = b.cells[0].textContent.toLowerCase();
-      return nameA.localeCompare(nameB);
-    });
-    sorted.forEach(row => tbody.appendChild(row));
   }
 
   loadData();
