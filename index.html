@@ -1,53 +1,47 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>RFID Sport Data - Super Upgrade</title>
+  <title>RFID Race Results - Live Viewer</title>
   <style>
-    body { font-family: sans-serif; padding: 20px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    th, td { border: 1px solid #aaa; padding: 8px; text-align: left; }
-    th { background-color: #f2f2f2; }
-    tr.highlight { background-color: #d4edda; animation: highlightAnim 2s ease; }
-    @keyframes highlightAnim {
-      from { background-color: yellow; }
-      to { background-color: #d4edda; }
-    }
-    input, button {
-      margin: 10px 5px;
-      padding: 8px 12px;
-      font-weight: bold;
-    }
-    .header {
-      text-align: center;
-      font-size: 24px;
-      font-weight: bold;
-      margin-bottom: 5px;
-    }
+    body { font-family: Arial, sans-serif; padding: 20px; background: #f9f9f9; }
+    .header { text-align: center; font-size: 24px; font-weight: bold; margin-bottom: 5px; }
+    h2 { text-align: center; margin-bottom: 20px; }
+    table { width: 90%; margin: auto; border-collapse: collapse; background: #fff; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    th, td { border: 1px solid #ccc; padding: 10px; text-align: center; }
+    th { background-color: #f0f0f0; }
+    input, button { margin: 10px 5px; padding: 8px 12px; font-weight: bold; }
+    .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #555; }
     @media (max-width: 600px) {
-      table, thead, tbody, th, td, tr { display: block; }
-      th { display: none; }
-      td { border: none; border-bottom: 1px solid #eee; }
+      table { font-size: 12px; }
     }
   </style>
 </head>
 <body>
 
 <div class="header">POLITEKNIK BALIK PULAU</div>
-<h2>Live RFID Sport Data</h2>
+<h2>🏁 Live RFID Race Results</h2>
 
-<input type="text" id="searchInput" placeholder="Cari Nama..." oninput="searchTable()">
-<button onclick="exportToCSV()">💾 Save CSV</button>
-<button onclick="window.print()">🖨️ Print PDF</button>
+<div style="text-align:center;">
+  <input type="text" id="searchInput" placeholder="Cari Nama..." oninput="searchTable()">
+  <button onclick="exportToCSV()">💾 Save CSV</button>
+  <button onclick="window.print()">🖨️ Print PDF</button>
+</div>
 
 <table id="dataTable">
   <thead>
     <tr>
-      <th onclick="sortTable()">Nama 🔽</th>
+      <th>Pos</th>
+      <th>Nama</th>
       <th>Masa</th>
+      <th>GAP</th>
     </tr>
   </thead>
   <tbody></tbody>
 </table>
+
+<div class="footer">
+  Last updated: <span id="lastUpdated"></span>
+</div>
 
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -59,14 +53,13 @@
     authDomain: "rfid-sport.firebaseapp.com",
     databaseURL: "https://rfid-sport-default-rtdb.firebaseio.com",
     projectId: "rfid-sport",
-    storageBucket: "rfid-sport.firebasestorage.app",
+    storageBucket: "rfid-sport.appspot.com",
     messagingSenderId: "381783930543",
     appId: "1:381783930543:web:3dd45b470f9661b888065a"
   };
 
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
-  let previousData = [];
 
   function loadData() {
     const timeRef = db.ref("logs/time");
@@ -75,10 +68,9 @@
     Promise.all([timeRef.once('value'), userRef.once('value')]).then(([timeSnap, userSnap]) => {
       const timeData = Object.values(timeSnap.val() || {});
       const userData = Object.values(userSnap.val() || {});
-      const combinedData = [];
+      let combinedData = [];
 
       const minLength = Math.min(timeData.length, userData.length);
-
       for (let i = 0; i < minLength; i++) {
         combinedData.push({
           nama: userData[i],
@@ -86,77 +78,75 @@
         });
       }
 
+      // Sort by time
+      combinedData.sort((a, b) => convertToMs(a.masa) - convertToMs(b.masa));
+      const leaderTime = convertToMs(combinedData[0].masa);
+
+      combinedData = combinedData.map((item, index) => ({
+        position: index + 1,
+        nama: item.nama,
+        masa: item.masa,
+        gap: index === 0 ? "+00:00" : formatGap(convertToMs(item.masa) - leaderTime)
+      }));
+
       renderTable(combinedData);
+      document.getElementById("lastUpdated").innerText = new Date().toLocaleTimeString();
     });
   }
 
   function renderTable(data) {
     const tbody = document.querySelector("#dataTable tbody");
     tbody.innerHTML = "";
-
-    data.forEach((item, index) => {
+    data.forEach(item => {
       const tr = document.createElement("tr");
-
-      if (!previousData[index] || previousData[index].nama !== item.nama || previousData[index].masa !== item.masa) {
-        tr.classList.add("highlight");
-      }
-
-      const tdNama = document.createElement("td");
-      tdNama.textContent = item.nama;
-
-      const tdMasa = document.createElement("td");
-      tdMasa.textContent = item.masa;
-
-      tr.appendChild(tdNama);
-      tr.appendChild(tdMasa);
+      tr.innerHTML = `
+        <td>${item.position}</td>
+        <td>${item.nama}</td>
+        <td>${item.masa}</td>
+        <td>${item.gap}</td>
+      `;
       tbody.appendChild(tr);
     });
+  }
 
-    previousData = data;
+  function convertToMs(timeStr) {
+    let [min, sec, ms] = timeStr.split(":").map(Number);
+    return (min * 60000) + (sec * 1000) + ms;
+  }
+
+  function formatGap(ms) {
+    let totalSec = Math.floor(ms / 1000);
+    let min = Math.floor(totalSec / 60);
+    let sec = totalSec % 60;
+    let msPart = ms % 1000;
+    return `+${String(min).padStart(2,'0')}:${String(sec).padStart(2,'0')}:${String(Math.floor(msPart/10)).padStart(2,'0')}`;
   }
 
   function exportToCSV() {
     const rows = Array.from(document.querySelectorAll("#dataTable tr"));
     let csvContent = "data:text/csv;charset=utf-8,";
-
     rows.forEach(row => {
       const cols = row.querySelectorAll("td, th");
       const rowData = Array.from(cols).map(col => `"${col.textContent.trim()}"`).join(",");
       csvContent += rowData + "\r\n";
     });
-
-    const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "rfid_sport_data.csv");
-    document.body.appendChild(link);
+    link.href = encodeURI(csvContent);
+    link.download = "rfid_race_results.csv";
     link.click();
-    document.body.removeChild(link);
   }
 
   function searchTable() {
     const input = document.getElementById("searchInput").value.toLowerCase();
     const trs = document.querySelectorAll("#dataTable tbody tr");
-
     trs.forEach(tr => {
-      const nama = tr.querySelector("td")?.textContent.toLowerCase();
+      const nama = tr.cells[1].textContent.toLowerCase();
       tr.style.display = nama.includes(input) ? "" : "none";
     });
   }
 
-  function sortTable() {
-    const tbody = document.querySelector("#dataTable tbody");
-    const rows = Array.from(tbody.rows);
-    const sorted = rows.sort((a, b) => {
-      const nameA = a.cells[0].textContent.toLowerCase();
-      const nameB = b.cells[0].textContent.toLowerCase();
-      return nameA.localeCompare(nameB);
-    });
-    sorted.forEach(row => tbody.appendChild(row));
-  }
-
   loadData();
-  setInterval(loadData, 10000);
+  setInterval(loadData, 10000);  // Refresh every 10 seconds
 </script>
 
 </body>
