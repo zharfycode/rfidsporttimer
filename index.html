@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>RFID Sport Data - Super Upgrade</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { border: 1px solid #aaa; padding: 8px; text-align: left; }
+    th { background-color: #f2f2f2; }
+    tr.highlight { background-color: #d4edda; animation: highlightAnim 2s ease; }
+    @keyframes highlightAnim {
+      from { background-color: yellow; }
+      to { background-color: #d4edda; }
+    }
+    input, button {
+      margin: 10px 5px;
+      padding: 8px 12px;
+      font-weight: bold;
+    }
+    .header {
+      text-align: center;
+      font-size: 24px;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    @media (max-width: 600px) {
+      table, thead, tbody, th, td, tr { display: block; }
+      th { display: none; }
+      td { border: none; border-bottom: 1px solid #eee; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">POLITEKNIK SULTAN AZLAN SHAH</div>
+<h2>Live RFID Sport Data</h2>
+
+<input type="text" id="searchInput" placeholder="Cari Nama..." oninput="searchTable()">
+<button onclick="exportToCSV()">💾 Save CSV</button>
+<button onclick="window.print()">🖨️ Print PDF</button>
+
+<table id="dataTable">
+  <thead>
+    <tr>
+      <th onclick="sortTable()">Nama 🔽</th>
+      <th>Masa</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyA9mrY_tjAKoCkj_6P7CSNU_89oiGmF6GE",
+    authDomain: "rfid-sport.firebaseapp.com",
+    databaseURL: "https://rfid-sport-default-rtdb.firebaseio.com",
+    projectId: "rfid-sport",
+    storageBucket: "rfid-sport.firebasestorage.app",
+    messagingSenderId: "381783930543",
+    appId: "1:381783930543:web:3dd45b470f9661b888065a"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+  let previousData = [];
+
+  function loadData() {
+    const timeRef = db.ref("logs/time");
+    const userRef = db.ref("logs/user");
+
+    Promise.all([timeRef.once('value'), userRef.once('value')]).then(([timeSnap, userSnap]) => {
+      const timeData = Object.values(timeSnap.val() || {});
+      const userData = Object.values(userSnap.val() || {});
+      const combinedData = [];
+
+      const minLength = Math.min(timeData.length, userData.length);
+
+      for (let i = 0; i < minLength; i++) {
+        combinedData.push({
+          nama: userData[i],
+          masa: timeData[i]
+        });
+      }
+
+      renderTable(combinedData);
+    });
+  }
+
+  function renderTable(data) {
+    const tbody = document.querySelector("#dataTable tbody");
+    tbody.innerHTML = "";
+
+    data.forEach((item, index) => {
+      const tr = document.createElement("tr");
+
+      if (!previousData[index] || previousData[index].nama !== item.nama || previousData[index].masa !== item.masa) {
+        tr.classList.add("highlight");
+      }
+
+      const tdNama = document.createElement("td");
+      tdNama.textContent = item.nama;
+
+      const tdMasa = document.createElement("td");
+      tdMasa.textContent = item.masa;
+
+      tr.appendChild(tdNama);
+      tr.appendChild(tdMasa);
+      tbody.appendChild(tr);
+    });
+
+    previousData = data;
+  }
+
+  function exportToCSV() {
+    const rows = Array.from(document.querySelectorAll("#dataTable tr"));
+    let csvContent = "data:text/csv;charset=utf-8,";
+
+    rows.forEach(row => {
+      const cols = row.querySelectorAll("td, th");
+      const rowData = Array.from(cols).map(col => `"${col.textContent.trim()}"`).join(",");
+      csvContent += rowData + "\r\n";
+    });
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "rfid_sport_data.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  function searchTable() {
+    const input = document.getElementById("searchInput").value.toLowerCase();
+    const trs = document.querySelectorAll("#dataTable tbody tr");
+
+    trs.forEach(tr => {
+      const nama = tr.querySelector("td")?.textContent.toLowerCase();
+      tr.style.display = nama.includes(input) ? "" : "none";
+    });
+  }
+
+  function sortTable() {
+    const tbody = document.querySelector("#dataTable tbody");
+    const rows = Array.from(tbody.rows);
+    const sorted = rows.sort((a, b) => {
+      const nameA = a.cells[0].textContent.toLowerCase();
+      const nameB = b.cells[0].textContent.toLowerCase();
+      return nameA.localeCompare(nameB);
+    });
+    sorted.forEach(row => tbody.appendChild(row));
+  }
+
+  loadData();
+  setInterval(loadData, 10000);
+</script>
+
+</body>
+</html>
