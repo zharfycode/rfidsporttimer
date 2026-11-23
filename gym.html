@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Aesthetic Build Plan</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f4f5f7;
+      --card: #ffffff;
+      --text: #1b1d22;
+      --muted: #6b7180;
+      --line: #e4e6eb;
+      --accent: #e4572e;
+      --accent-soft: #fde8e1;
+      --done: #2e9e5b;
+      --done-soft: #e2f4e9;
+      --shadow: 0 2px 14px rgba(0,0,0,0.06);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #111317;
+        --card: #1a1d23;
+        --text: #eceef2;
+        --muted: #9aa1ae;
+        --line: #2a2e36;
+        --accent: #ff7a4f;
+        --accent-soft: #3a231b;
+        --done: #4cc27e;
+        --done-soft: #17301f;
+        --shadow: 0 2px 14px rgba(0,0,0,0.4);
+      }
+    }
+    :root[data-theme="dark"] {
+      --bg: #111317;
+      --card: #1a1d23;
+      --text: #eceef2;
+      --muted: #9aa1ae;
+      --line: #2a2e36;
+      --accent: #ff7a4f;
+      --accent-soft: #3a231b;
+      --done: #4cc27e;
+      --done-soft: #17301f;
+      --shadow: 0 2px 14px rgba(0,0,0,0.4);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Poppins', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .wrap { max-width: 880px; margin: 0 auto; padding: 24px 16px 96px; }
+
+    header { margin-bottom: 20px; }
+    .eyebrow { color: var(--accent); font-weight: 600; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; }
+    h1 { font-size: clamp(26px, 6vw, 38px); margin: 4px 0 8px; line-height: 1.15; }
+    .lead { color: var(--muted); margin: 0; max-width: 60ch; }
+
+    .week {
+      display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px;
+      margin: 20px 0 24px;
+    }
+    .week div {
+      background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+      text-align: center; padding: 8px 2px; font-size: 12px; color: var(--muted);
+    }
+    .week div b { display: block; font-size: 13px; color: var(--text); }
+    .week .train { border-color: var(--accent); background: var(--accent-soft); }
+    .week .train b { color: var(--accent); }
+
+    .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+    .tab {
+      flex: 1; border: 1px solid var(--line); background: var(--card); color: var(--text);
+      border-radius: 12px; padding: 10px 8px; cursor: pointer; font: inherit; text-align: left;
+      box-shadow: var(--shadow);
+    }
+    .tab small { display: block; color: var(--muted); font-size: 12px; }
+    .tab strong { font-size: 15px; }
+    .tab[aria-selected="true"] { border-color: var(--accent); outline: 2px solid var(--accent); outline-offset: -1px; }
+
+    .card {
+      background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+      box-shadow: var(--shadow); padding: 18px; margin-bottom: 16px;
+    }
+    .day-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+    .day-head h2 { margin: 0; font-size: 22px; }
+    .day-head p { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .chip { background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; }
+
+    .progress { margin-top: 14px; }
+    .bar { height: 8px; background: var(--line); border-radius: 999px; overflow: hidden; }
+    .bar span { display: block; height: 100%; width: 0; background: var(--done); transition: width .3s; }
+    .progress small { color: var(--muted); font-size: 12px; }
+
+    h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 20px 0 8px; }
+
+    .ex {
+      display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center;
+      padding: 12px; border: 1px solid var(--line); border-radius: 12px; margin-bottom: 8px;
+      transition: background .2s;
+    }
+    .ex.done { background: var(--done-soft); border-color: var(--done); }
+    .ex.done .name { text-decoration: line-through; opacity: .7; }
+    .ex input[type="checkbox"] { width: 22px; height: 22px; accent-color: var(--done); cursor: pointer; }
+    .name { font-weight: 600; }
+    .meta { color: var(--muted); font-size: 13px; }
+    .tip { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .side { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+    .weight {
+      width: 78px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line);
+      background: var(--bg); color: var(--text); font: inherit; font-size: 13px; text-align: right;
+    }
+    .rest-btn {
+      border: none; background: var(--accent); color: #fff; font: inherit; font-size: 12px; font-weight: 600;
+      padding: 5px 10px; border-radius: 8px; cursor: pointer; white-space: nowrap;
+    }
+
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+    .btn {
+      border: 1px solid var(--line); background: var(--card); color: var(--text);
+      font: inherit; font-size: 14px; padding: 8px 14px; border-radius: 10px; cursor: pointer;
+    }
+
+    .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+    .card ul { margin: 0; padding-left: 18px; }
+    .card li { margin-bottom: 6px; }
+    .card h4 { margin: 0 0 8px; font-size: 16px; }
+
+    .timer {
+      position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%) translateY(140%);
+      background: var(--text); color: var(--bg); border-radius: 999px; padding: 10px 14px 10px 20px;
+      display: flex; align-items: center; gap: 14px; box-shadow: 0 8px 30px rgba(0,0,0,.3);
+      transition: transform .3s; z-index: 10; max-width: calc(100% - 32px);
+    }
+    .timer.show { transform: translateX(-50%) translateY(0); }
+    .timer .t { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .timer button { border: none; background: var(--accent); color: #fff; border-radius: 999px; padding: 6px 12px; font: inherit; font-size: 13px; cursor: pointer; }
+
+    footer { color: var(--muted); font-size: 12px; text-align: center; margin-top: 24px; }
+
+    @media (max-width: 520px) {
+      .ex { grid-template-columns: auto 1fr; }
+      .side { grid-column: 2; flex-direction: row; align-items: center; justify-content: flex-start; }
+      .week div { font-size: 10px; padding: 6px 0; }
+      .week div b { font-size: 11px; }
+    }
+    @media print {
+      .tabs, .actions, .timer, .rest-btn, .week { display: none !important; }
+      .day-panel { display: block !important; break-after: page; }
+      body { background: #fff; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">3-Day Aesthetic Split</div>
+    <h1>Build the V-Taper: Mon · Wed · Fri</h1>
+    <p class="lead">Wide shoulders, a full chest, a wide back and arms that fill the sleeves. Each session takes about 60–75 minutes. Tick off exercises as you go, log your weights, and use the rest timer between sets.</p>
+  </header>
+
+  <div class="week" aria-label="Weekly schedule">
+    <div class="train"><b>Mon</b>Push</div>
+    <div><b>Tue</b>Rest</div>
+    <div class="train"><b>Wed</b>Pull</div>
+    <div><b>Thu</b>Rest</div>
+    <div class="train"><b>Fri</b>Legs</div>
+    <div><b>Sat</b>Walk</div>
+    <div><b>Sun</b>Rest</div>
+  </div>
+
+  <div class="tabs" role="tablist" id="tabs"></div>
+  <div id="panels"></div>
+
+  <div class="grid2">
+    <div class="card">
+      <h4>🔥 Warm-up (every session)</h4>
+      <ul>
+        <li>5 min light cardio (bike, rower or incline walk)</li>
+        <li>Arm circles, band pull-aparts × 20</li>
+        <li>2–3 lighter ramp-up sets before your first exercise</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>📈 How to progress</h4>
+      <ul>
+        <li>Work in the given rep range. When you hit the top of the range on every set, add 2.5–5 kg next session.</li>
+        <li>Finish most sets 1–2 reps short of failure. Take the last set of isolation moves to failure.</li>
+        <li>Control the lowering phase (2–3 seconds).</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>🍗 Nutrition for aesthetics</h4>
+      <ul>
+        <li>Protein: 1.6–2.2 g per kg of bodyweight daily</li>
+        <li>Lean bulk: +200–300 kcal. Cut: −300–500 kcal.</li>
+        <li>Drink 2.5–3 L of water, sleep 7–9 hours</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>🧘 Rest days</h4>
+      <ul>
+        <li>Tue/Thu: full rest or 20–30 min light cardio</li>
+        <li>Sat: 8–10k steps, stretching or mobility</li>
+        <li>Sun: full recovery</li>
+      </ul>
+    </div>
+  </div>
+
+  <footer>Progress and weights are saved in this browser only. Check with a doctor before starting a new training program.</footer>
+</div>
+
+<div class="timer" id="timer" role="status" aria-live="polite">
+  <span>Rest</span><span class="t" id="timerT">0:00</span>
+  <button id="timerAdd">+15s</button>
+  <button id="timerStop">Skip</button>
+</div>
+
+<script>
+const PLAN = [
+  {
+    id: "mon", day: "Monday", title: "Push", subtitle: "Chest · Shoulders · Triceps",
+    focus: ["Upper chest", "Side delts", "Triceps"],
+    blocks: [
+      { label: "Main lifts", items: [
+        { n: "Incline Barbell / Dumbbell Press", s: 4, r: "6–10", rest: 120, tip: "30° incline builds the upper chest for a fuller look." },
+        { n: "Flat Dumbbell Press", s: 3, r: "8–12", rest: 90, tip: "Get a deep stretch at the bottom, keep shoulder blades pinned." },
+        { n: "Seated Dumbbell Shoulder Press", s: 3, r: "8–10", rest: 90, tip: "Stop just short of lockout to keep tension on the delts." }
+      ]},
+      { label: "Accessories", items: [
+        { n: "Cable / Pec Deck Fly", s: 3, r: "12–15", rest: 60, tip: "Squeeze for 1 second at peak contraction." },
+        { n: "Dumbbell Lateral Raise", s: 4, r: "12–20", rest: 60, tip: "This is the key move for the V-taper. Lead with the elbows, no swinging." },
+        { n: "Overhead Cable Triceps Extension", s: 3, r: "10–12", rest: 60, tip: "Hits the long head, which is most of the arm's size." },
+        { n: "Triceps Rope Pushdown", s: 3, r: "12–15", rest: 45, tip: "Spread the rope apart at the bottom." }
+      ]}
+    ]
+  },
+  {
+    id: "wed", day: "Wednesday", title: "Pull", subtitle: "Back · Rear Delts · Biceps · Abs",
+    focus: ["Lat width", "Back thickness", "Biceps", "Abs"],
+    blocks: [
+      { label: "Main lifts", items: [
+        { n: "Pull-Ups / Lat Pulldown (wide)", s: 4, r: "6–10", rest: 120, tip: "Drive the elbows down to your hips. Builds back width." },
+        { n: "Barbell / Chest-Supported Row", s: 4, r: "8–10", rest: 90, tip: "Pull to the lower ribs and squeeze the shoulder blades together." },
+        { n: "Single-Arm Cable Row", s: 3, r: "10–12", rest: 60, tip: "Get a full stretch forward, then pull back toward the hip." }
+      ]},
+      { label: "Accessories", items: [
+        { n: "Face Pull / Reverse Pec Deck", s: 3, r: "15–20", rest: 45, tip: "Rear delts give a 3D shoulder and better posture." },
+        { n: "Incline Dumbbell Curl", s: 3, r: "8–12", rest: 60, tip: "Stretches the long head for biceps peak." },
+        { n: "Hammer Curl", s: 3, r: "10–12", rest: 60, tip: "Builds the brachialis and forearms for thicker arms." },
+        { n: "Hanging Leg Raise", s: 3, r: "10–15", rest: 45, tip: "Curl the pelvis up, don't just swing the legs." },
+        { n: "Cable Crunch", s: 3, r: "12–15", rest: 45, tip: "Round the spine. Builds visible abs." }
+      ]}
+    ]
+  },
+  {
+    id: "fri", day: "Friday", title: "Legs + Shoulders", subtitle: "Quads · Hamstrings · Glutes · Delts · Arms",
+    focus: ["Quads", "Hamstrings", "Calves", "Delts", "Arms"],
+    blocks: [
+      { label: "Main lifts", items: [
+        { n: "Back Squat / Hack Squat", s: 4, r: "6–10", rest: 150, tip: "Go to at least parallel and keep the chest up." },
+        { n: "Romanian Deadlift", s: 3, r: "8–10", rest: 120, tip: "Hips back, slight knee bend, feel the hamstring stretch." },
+        { n: "Walking Lunge / Bulgarian Split Squat", s: 3, r: "10 each", rest: 90, tip: "Builds balance and quad sweep." }
+      ]},
+      { label: "Accessories", items: [
+        { n: "Leg Curl", s: 3, r: "10–15", rest: 60, tip: "Pause for a moment at full contraction." },
+        { n: "Standing Calf Raise", s: 4, r: "10–15", rest: 45, tip: "Pause 2 seconds at the bottom stretch." },
+        { n: "Cable Lateral Raise", s: 3, r: "12–15", rest: 45, tip: "Second lateral raise session of the week for capped shoulders." },
+        { n: "Superset: EZ-Bar Curl + Skull Crusher", s: 3, r: "10–12", rest: 60, tip: "Arm finisher. Do both back to back, then rest." }
+      ]}
+    ]
+  }
+];
+
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+};
+const done = store.get("gym-done", {});
+const weights = store.get("gym-weights", {});
+
+const todayIdx = { 1: 0, 3: 1, 5: 2 }[new Date().getDay()];
+let active = store.get("gym-tab", todayIdx ?? 0);
+if (todayIdx !== undefined) active = todayIdx;
+
+const tabs = document.getElementById("tabs");
+const panels = document.getElementById("panels");
+
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c])); }
+
+PLAN.forEach((d, i) => {
+  const t = document.createElement("button");
+  t.className = "tab"; t.role = "tab"; t.id = "tab-" + d.id;
+  t.innerHTML = `<small>${d.day}${i === todayIdx ? " · Today" : ""}</small><strong>${d.title}</strong>`;
+  t.onclick = () => select(i);
+  tabs.appendChild(t);
+
+  const p = document.createElement("section");
+  p.className = "day-panel"; p.id = "panel-" + d.id; p.role = "tabpanel";
+  let html = `<div class="card">
+    <div class="day-head"><div><h2>${d.day}: ${d.title}</h2><p>${d.subtitle}</p></div></div>
+    <div class="chips">${d.focus.map(f => `<span class="chip">${f}</span>`).join("")}</div>
+    <div class="progress"><div class="bar"><span id="bar-${d.id}"></span></div><small id="pct-${d.id}"></small></div>`;
+  d.blocks.forEach((b, bi) => {
+    html += `<h3>${b.label}</h3>`;
+    b.items.forEach((e, ei) => {
+      const key = `${d.id}-${bi}-${ei}`;
+      html += `<label class="ex${done[key] ? " done" : ""}" data-key="${key}">
+        <input type="checkbox" ${done[key] ? "checked" : ""} aria-label="Mark ${esc(e.n)} done">
+        <div><div class="name">${e.n}</div>
+          <div class="meta">${e.s} sets × ${e.r} reps · rest ${e.rest >= 60 ? (e.rest/60) + " min" : e.rest + "s"}</div>
+          <div class="tip">${e.tip}</div></div>
+        <div class="side">
+          <input class="weight" type="text" inputmode="decimal" placeholder="kg" value="${esc(weights[key] || "")}" aria-label="Weight used">
+          <button type="button" class="rest-btn" data-rest="${e.rest}">⏱ Rest</button>
+        </div>
+      </label>`;
+    });
+  });
+  html += `<div class="actions">
+    <button class="btn" data-reset="${d.id}">↺ Reset ticks</button>
+    <button class="btn" onclick="window.print()">🖨 Print plan</button>
+  </div></div>`;
+  p.innerHTML = html;
+  panels.appendChild(p);
+});
+
+panels.addEventListener("change", e => {
+  const row = e.target.closest(".ex");
+  if (!row) return;
+  const key = row.dataset.key;
+  if (e.target.type === "checkbox") {
+    done[key] = e.target.checked;
+    row.classList.toggle("done", e.target.checked);
+    store.set("gym-done", done);
+    updateProgress();
+  }
+});
+panels.addEventListener("input", e => {
+  if (!e.target.classList.contains("weight")) return;
+  weights[e.target.closest(".ex").dataset.key] = e.target.value;
+  store.set("gym-weights", weights);
+});
+panels.addEventListener("click", e => {
+  const rest = e.target.closest(".rest-btn");
+  if (rest) { e.preventDefault(); startTimer(+rest.dataset.rest); return; }
+  const reset = e.target.closest("[data-reset]");
+  if (reset) {
+    const id = reset.dataset.reset;
+    Object.keys(done).forEach(k => { if (k.startsWith(id + "-")) delete done[k]; });
+    store.set("gym-done", done);
+    document.querySelectorAll(`#panel-${id} .ex`).forEach(r => { r.classList.remove("done"); r.querySelector("input[type=checkbox]").checked = false; });
+    updateProgress();
+  }
+});
+
+function select(i) {
+  active = i; store.set("gym-tab", i);
+  PLAN.forEach((d, j) => {
+    document.getElementById("tab-" + d.id).setAttribute("aria-selected", i === j);
+    document.getElementById("panel-" + d.id).style.display = i === j ? "" : "none";
+  });
+}
+
+function updateProgress() {
+  PLAN.forEach(d => {
+    const rows = document.querySelectorAll(`#panel-${d.id} .ex`);
+    const n = [...rows].filter(r => r.classList.contains("done")).length;
+    const pct = Math.round(n / rows.length * 100);
+    document.getElementById("bar-" + d.id).style.width = pct + "%";
+    document.getElementById("pct-" + d.id).textContent =
+      n === rows.length ? "Workout complete. Nice work! 💪" : `${n} of ${rows.length} exercises done`;
+  });
+}
+
+// Rest timer
+const timerEl = document.getElementById("timer"), timerT = document.getElementById("timerT");
+let remaining = 0, tick = null;
+function fmt(s) { return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); }
+function startTimer(sec) {
+  remaining = sec; timerT.textContent = fmt(remaining); timerEl.classList.add("show");
+  clearInterval(tick);
+  tick = setInterval(() => {
+    remaining--; timerT.textContent = fmt(Math.max(remaining, 0));
+    if (remaining <= 0) { clearInterval(tick); beep(); if (navigator.vibrate) navigator.vibrate([200, 100, 200]); setTimeout(() => timerEl.classList.remove("show"), 1500); }
+  }, 1000);
+}
+document.getElementById("timerAdd").onclick = () => { remaining += 15; timerT.textContent = fmt(remaining); };
+document.getElementById("timerStop").onclick = () => { clearInterval(tick); timerEl.classList.remove("show"); };
+function beep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx.createOscillator(); o.frequency.value = 880; o.connect(ctx.destination);
+    o.start(); o.stop(ctx.currentTime + 0.25);
+  } catch {}
+}
+
+select(active);
+updateProgress();
+</script>
+</body>
+</html>
