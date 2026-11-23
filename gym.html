@@ -382,24 +382,76 @@ function updateProgress() {
 }
 
 // Rest timer
-// iPhone Safari only plays sound from an audio context that was unlocked by a tap,
-// so the context is created/resumed when "Rest" is pressed and reused when time is up.
+// iPhone notes:
+// - Safari only plays sound that a tap started, and it pauses page scripts when the
+//   screen locks. So each Rest tap starts an <audio> track that is silent for the rest
+//   period and then beeps. Media playback keeps going when the screen locks or you
+//   switch apps, so the beep still sounds on time.
+// - A screen wake lock keeps the display on while the timer runs, where supported.
 const timerEl = document.getElementById("timer"), timerT = document.getElementById("timerT");
-let endAt = 0, tick = null, audioCtx = null;
+let endAt = 0, tick = null, wakeLock = null, beepUrl = null;
+const player = new Audio();
+player.setAttribute("playsinline", "");
 function fmt(s) { return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); }
 function left() { return Math.max(0, Math.ceil((endAt - Date.now()) / 1000)); }
-function unlockAudio() {
+
+// Builds a small WAV: `silence` seconds of quiet, then three beeps.
+function makeTrack(silence) {
+  const rate = 8000, beeps = [[0, 880], [0.35, 880], [0.7, 1320]], tail = 1.1;
+  const n = Math.round((silence + tail) * rate), data = new Uint8Array(44 + n);
+  const v = new DataView(data.buffer);
+  const str = (o, t) => [...t].forEach((c, i) => data[o + i] = c.charCodeAt(0));
+  str(0, "RIFF"); v.setUint32(4, 36 + n, true); str(8, "WAVEfmt ");
+  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, rate, true); v.setUint32(28, rate, true); v.setUint16(32, 1, true);
+  v.setUint16(34, 8, true); str(36, "data"); v.setUint32(40, n, true);
+  data.fill(128, 44);
+  const s0 = Math.round(silence * rate);
+  beeps.forEach(([d, f]) => {
+    const a = s0 + Math.round(d * rate), len = Math.round(0.28 * rate);
+    for (let i = 0; i < len && a + i < n; i++) {
+      const env = Math.min(1, i / 40, (len - i) / 40);
+      data[44 + a + i] = 128 + Math.round((Math.sin(2 * Math.PI * f * i / rate) > 0 ? 1 : -1) * 110 * env);
+    }
+  });
+  return URL.createObjectURL(new Blob([data], { type: "audio/wav" }));
+}
+
+function playTrack(sec) {
   try {
-    if (navigator.audioSession) navigator.audioSession.type = "playback"; // plays even with the silent switch on (iOS 17+)
-    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    if (audioCtx.state !== "running") audioCtx.resume();
-    const b = audioCtx.createBuffer(1, 1, 22050), src = audioCtx.createBufferSource();
-    src.buffer = b; src.connect(audioCtx.destination); src.start(0);
+    if (navigator.audioSession) navigator.audioSession.type = "playback"; // ignore silent switch (iOS 17+)
+    if (beepUrl) URL.revokeObjectURL(beepUrl);
+    beepUrl = makeTrack(sec);
+    player.src = beepUrl;
+    player.currentTime = 0;
+    const pr = player.play();
+    if (pr && pr.catch) pr.catch(() => {});
+    if ("mediaSession" in navigator) {
+      navigator.mediaSession.metadata = new MediaMetadata({ title: "Rest timer", artist: "Gym plan" });
+    }
   } catch {}
 }
+function stopTrack() { try { player.pause(); } catch {} }
+
+async function keepAwake(on) {
+  try {
+    if (on && "wakeLock" in navigator && !wakeLock) {
+      wakeLock = await navigator.wakeLock.request("screen");
+      wakeLock.addEventListener("release", () => { wakeLock = null; });
+    } else if (!on && wakeLock) { await wakeLock.release(); wakeLock = null; }
+  } catch {}
+}
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && timerEl.classList.contains("show")) {
+    keepAwake(true);
+    if (left() <= 0 && !timerEl.classList.contains("finished")) finish();
+  }
+});
+
 function startTimer(sec) {
-  unlockAudio();
   endAt = Date.now() + sec * 1000;
+  playTrack(sec);
+  keepAwake(true);
   timerEl.classList.remove("finished");
   timerT.textContent = fmt(left()); timerEl.classList.add("show");
   clearInterval(tick);
@@ -412,28 +464,19 @@ function finish() {
   clearInterval(tick);
   timerT.textContent = "Go!";
   timerEl.classList.add("finished");
-  beep();
-  if (navigator.vibrate) navigator.vibrate([300, 150, 300, 150, 300]);
+  if (navigator.vibrate) navigator.vibrate([300, 150, 300, 150, 300]); // Android only
+  keepAwake(false);
   setTimeout(() => timerEl.classList.remove("show", "finished"), 4000);
 }
-document.getElementById("timerAdd").onclick = () => { unlockAudio(); endAt = Math.max(endAt, Date.now()) + 15000; timerT.textContent = fmt(left()); };
-document.getElementById("timerStop").onclick = () => { clearInterval(tick); timerEl.classList.remove("show", "finished"); };
-function beep() {
-  try {
-    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    if (audioCtx.state !== "running") audioCtx.resume();
-    const t0 = audioCtx.currentTime + 0.05;
-    [0, 0.35, 0.7].forEach((d, i) => {
-      const o = audioCtx.createOscillator(), g = audioCtx.createGain();
-      o.type = "square"; o.frequency.value = i === 2 ? 1320 : 880;
-      g.gain.setValueAtTime(0.0001, t0 + d);
-      g.gain.exponentialRampToValueAtTime(0.5, t0 + d + 0.02);
-      g.gain.exponentialRampToValueAtTime(0.0001, t0 + d + 0.28);
-      o.connect(g); g.connect(audioCtx.destination);
-      o.start(t0 + d); o.stop(t0 + d + 0.3);
-    });
-  } catch {}
-}
+document.getElementById("timerAdd").onclick = () => {
+  endAt = Math.max(endAt, Date.now()) + 15000;
+  timerT.textContent = fmt(left());
+  playTrack((endAt - Date.now()) / 1000);
+};
+document.getElementById("timerStop").onclick = () => {
+  clearInterval(tick); stopTrack(); keepAwake(false);
+  timerEl.classList.remove("show", "finished");
+};
 
 select(active);
 updateProgress();
